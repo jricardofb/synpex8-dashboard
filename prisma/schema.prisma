@@ -1,0 +1,335 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum BrokerType {
+  MOCK
+  MT5
+  XM
+}
+
+enum OrderSide {
+  BUY
+  SELL
+}
+
+enum PositionState {
+  OPEN
+  CLOSED
+  UNKNOWN
+  PENDING
+}
+
+enum BrokerOrderState {
+  SUBMITTING
+  PENDING
+  FILLED
+  PARTIALLY_FILLED
+  UNKNOWN
+  CANCELLED
+  REJECTED
+}
+
+enum SignalEventType {
+  OPEN
+  MODIFY
+  PARTIAL_CLOSE
+  CLOSE
+}
+
+enum SignalOutboxStatus {
+  PENDING
+  PROCESSING
+  PROCESSED
+  FAILED
+}
+
+enum SignalProcessingStatus {
+  DRY_RUN_COMPLETED
+  NO_ROUTE
+  BLOCKED
+  UNSUPPORTED
+}
+
+enum InstrumentType {
+  UNKNOWN
+  SPOT
+  CFD
+  FUTURE
+  OPTION
+  STOCK
+  ETF
+  CRYPTO_SPOT
+}
+
+enum ContractSizeConversionMode {
+  EXACT_ONLY
+  CONTRACT_SIZE_RATIO
+}
+
+enum ExecutionState {
+  PENDING
+  FILLED
+  PARTIALLY_FILLED
+  UNKNOWN
+  CANCELLED
+}
+
+enum RobotMode {
+  OFF
+  ON
+}
+
+model Client {
+  id                String             @id @default(cuid())
+  externalId        String             @unique
+  name              String?
+  brokerAccounts    BrokerAccount[]
+  robots            Robot[]
+  copyTradingRoutes CopyTradingRoute[]
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+}
+
+model Master {
+  id                String               @id @default(cuid())
+  externalId        String               @unique
+  encryptedSecret   String
+  active            Boolean              @default(true)
+  signals           MasterSignal[]
+  assetMappings     MasterAssetMapping[]
+  copyTradingRoutes CopyTradingRoute[]
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+}
+
+model UniversalAsset {
+  id             String               @id @default(cuid())
+  code           String               @unique
+  displayName    String
+  active         Boolean              @default(true)
+  masterMappings MasterAssetMapping[]
+  brokerMappings BrokerAssetMapping[]
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+}
+
+model MasterAssetMapping {
+  id                         String         @id @default(cuid())
+  masterId                   String
+  master                     Master         @relation(fields: [masterId], references: [id], onDelete: Cascade)
+  sourceSymbol               String
+  normalizedSourceSymbol     String
+  universalAssetId           String
+  universalAsset             UniversalAsset @relation(fields: [universalAssetId], references: [id], onDelete: Restrict)
+  instrumentType             InstrumentType @default(UNKNOWN)
+  masterContractSizeOverride Decimal?       @db.Decimal(18, 8)
+  active                     Boolean        @default(true)
+  createdAt                  DateTime       @default(now())
+  updatedAt                  DateTime       @updatedAt
+
+  @@unique([masterId, normalizedSourceSymbol])
+  @@index([universalAssetId])
+}
+
+model BrokerAssetMapping {
+  id                     String         @id @default(cuid())
+  brokerAccountId        String
+  brokerAccount          BrokerAccount  @relation(fields: [brokerAccountId], references: [id], onDelete: Cascade)
+  universalAssetId       String
+  universalAsset         UniversalAsset @relation(fields: [universalAssetId], references: [id], onDelete: Restrict)
+  brokerSymbol           String
+  normalizedBrokerSymbol String
+  instrumentType             InstrumentType @default(UNKNOWN)
+  contractSize               Decimal        @db.Decimal(18, 8)
+  conversionMode             ContractSizeConversionMode @default(EXACT_ONLY)
+  active                     Boolean        @default(true)
+  createdAt              DateTime       @default(now())
+  updatedAt              DateTime       @updatedAt
+
+  @@unique([brokerAccountId, universalAssetId])
+  @@unique([brokerAccountId, normalizedBrokerSymbol])
+}
+
+model MasterSignal {
+  id              String          @id @default(cuid())
+  masterId        String
+  master          Master          @relation(fields: [masterId], references: [id], onDelete: Cascade)
+  masterAccountId String
+  robotId         String
+  strategyId      String
+  magicNumber     String
+  masterTicketId  String
+  eventType       SignalEventType
+  eventSeq        Int
+  payload         Json
+  payloadHash     String
+  outboxEvent     SignalOutbox?
+  processing      SignalProcessingResult?
+  receivedAt      DateTime        @default(now())
+  createdAt      DateTime @default(now())
+
+  @@unique([masterId, masterTicketId, eventSeq])
+  @@index([masterId, receivedAt])
+}
+
+model SignalOutbox {
+  id          String             @id @default(cuid())
+  signalId    String             @unique
+  signal      MasterSignal       @relation(fields: [signalId], references: [id], onDelete: Cascade)
+  status      SignalOutboxStatus @default(PENDING)
+  attempts    Int                @default(0)
+  availableAt DateTime           @default(now())
+  lockedAt    DateTime?
+  lastError   String?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  @@index([status, availableAt])
+}
+
+model SignalProcessingResult {
+  id          String                 @id @default(cuid())
+  signalId    String                 @unique
+  signal      MasterSignal           @relation(fields: [signalId], references: [id], onDelete: Cascade)
+  status      SignalProcessingStatus
+  result      Json
+  processedAt DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+}
+
+model BrokerAccount {
+  id                String               @id @default(cuid())
+  clientId          String
+  client            Client               @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  broker            BrokerType
+  accountNumber     String?
+  active            Boolean              @default(true)
+  balance           Decimal?             @db.Decimal(18, 8)
+  equity            Decimal?             @db.Decimal(18, 8)
+  freeMargin        Decimal?             @db.Decimal(18, 8)
+  usedMargin        Decimal?             @db.Decimal(18, 8)
+  positions         Position[]
+  orders            BrokerOrder[]
+  reservations      MarginReservation[]
+  assetMappings     BrokerAssetMapping[]
+  copyTradingRoutes CopyTradingRoute[]
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+
+  @@unique([clientId, accountNumber])
+  @@unique([clientId, id])
+}
+
+model Robot {
+  id                String             @id @default(cuid())
+  externalId        String             @unique
+  clientId          String?
+  client            Client?            @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  name              String
+  configuredVolume  Decimal            @db.Decimal(18, 8)
+  marginAllocation  Decimal?           @db.Decimal(18, 8)
+  status            RobotMode          @default(OFF)
+  positions         Position[]
+  copyTradingRoutes CopyTradingRoute[]
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  @@unique([clientId, id])
+}
+
+model CopyTradingRoute {
+  id              String        @id @default(cuid())
+  masterId        String
+  sourceRobotId   String
+  strategyId      String
+  clientId        String
+  brokerAccountId String
+  robotId         String
+  active          Boolean       @default(true)
+  master          Master        @relation(fields: [masterId], references: [id], onDelete: Cascade)
+  client          Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  brokerAccount   BrokerAccount @relation(fields: [clientId, brokerAccountId], references: [clientId, id], onDelete: Cascade)
+  robot           Robot         @relation(fields: [clientId, robotId], references: [clientId, id], onDelete: Cascade)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@unique([masterId, sourceRobotId, strategyId, brokerAccountId], map: "CopyTradingRoute_origin_destination_key")
+  @@index([masterId, sourceRobotId, strategyId, active], map: "CopyTradingRoute_origin_active_idx")
+}
+
+model Position {
+  id              String        @id @default(cuid())
+  externalId      String?       @unique
+  brokerAccountId String
+  brokerAccount   BrokerAccount @relation(fields: [brokerAccountId], references: [id], onDelete: Cascade)
+  robotId         String?
+  robot           Robot?        @relation(fields: [robotId], references: [id])
+  symbol          String
+  side            OrderSide
+  volume          Decimal       @db.Decimal(18, 8)
+  openPrice       Decimal?      @db.Decimal(18, 8)
+  stopLoss        Decimal?      @db.Decimal(18, 8)
+  takeProfit      Decimal?      @db.Decimal(18, 8)
+  state           PositionState @default(OPEN)
+  clientOrderId   String?       @unique
+  eventSeq        Int?
+  executions      Execution[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+}
+
+model BrokerOrder {
+  id               String             @id @default(cuid())
+  brokerAccountId  String
+  brokerAccount    BrokerAccount      @relation(fields: [brokerAccountId], references: [id], onDelete: Cascade)
+  clientOrderId    String
+  symbol           String
+  side             OrderSide
+  requestedVolume  Decimal            @db.Decimal(18, 8)
+  requiredMargin   Decimal            @db.Decimal(18, 8)
+  status           BrokerOrderState   @default(PENDING)
+  filledVolume     Decimal            @default(0) @db.Decimal(18, 8)
+  brokerPositionId String?
+  executionPrice   Decimal?           @db.Decimal(18, 8)
+  error            String?
+  reservation      MarginReservation?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  @@unique([brokerAccountId, clientOrderId])
+  @@index([status, createdAt])
+}
+
+model Execution {
+  id             String         @id @default(cuid())
+  positionId     String
+  position       Position       @relation(fields: [positionId], references: [id], onDelete: Cascade)
+  eventSeq       Int
+  side           OrderSide
+  observedVolume Decimal        @db.Decimal(18, 8)
+  executedPrice  Decimal?       @db.Decimal(18, 8)
+  status         ExecutionState @default(PENDING)
+  reason         String?
+  createdAt      DateTime       @default(now())
+
+  @@unique([positionId, eventSeq])
+}
+
+model MarginReservation {
+  id              String        @id @default(cuid())
+  brokerAccountId String
+  brokerAccount   BrokerAccount @relation(fields: [brokerAccountId], references: [id], onDelete: Cascade)
+  brokerOrderId   String?       @unique
+  brokerOrder     BrokerOrder?  @relation(fields: [brokerOrderId], references: [id], onDelete: SetNull)
+  symbol          String
+  amount          Decimal       @db.Decimal(18, 8)
+  reason          String
+  expiresAt       DateTime?
+  releasedAt      DateTime?
+  createdAt       DateTime      @default(now())
+}

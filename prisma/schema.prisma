@@ -137,28 +137,28 @@ model MasterAssetMapping {
 }
 
 model BrokerAssetMapping {
-  id                     String         @id @default(cuid())
+  id                     String                     @id @default(cuid())
   brokerAccountId        String
-  brokerAccount          BrokerAccount  @relation(fields: [brokerAccountId], references: [id], onDelete: Cascade)
+  brokerAccount          BrokerAccount              @relation(fields: [brokerAccountId], references: [id], onDelete: Cascade)
   universalAssetId       String
-  universalAsset         UniversalAsset @relation(fields: [universalAssetId], references: [id], onDelete: Restrict)
+  universalAsset         UniversalAsset             @relation(fields: [universalAssetId], references: [id], onDelete: Restrict)
   brokerSymbol           String
   normalizedBrokerSymbol String
-  instrumentType             InstrumentType @default(UNKNOWN)
-  contractSize               Decimal        @db.Decimal(18, 8)
-  conversionMode             ContractSizeConversionMode @default(EXACT_ONLY)
-  active                     Boolean        @default(true)
-  createdAt              DateTime       @default(now())
-  updatedAt              DateTime       @updatedAt
+  instrumentType         InstrumentType             @default(UNKNOWN)
+  contractSize           Decimal                    @db.Decimal(18, 8)
+  conversionMode         ContractSizeConversionMode @default(EXACT_ONLY)
+  active                 Boolean                    @default(true)
+  createdAt              DateTime                   @default(now())
+  updatedAt              DateTime                   @updatedAt
 
   @@unique([brokerAccountId, universalAssetId])
   @@unique([brokerAccountId, normalizedBrokerSymbol])
 }
 
 model MasterSignal {
-  id              String          @id @default(cuid())
+  id              String                  @id @default(cuid())
   masterId        String
-  master          Master          @relation(fields: [masterId], references: [id], onDelete: Cascade)
+  master          Master                  @relation(fields: [masterId], references: [id], onDelete: Cascade)
   masterAccountId String
   robotId         String
   strategyId      String
@@ -170,11 +170,12 @@ model MasterSignal {
   payloadHash     String
   outboxEvent     SignalOutbox?
   processing      SignalProcessingResult?
-  receivedAt      DateTime        @default(now())
-  createdAt      DateTime @default(now())
+  receivedAt      DateTime                @default(now())
+  createdAt       DateTime                @default(now())
 
   @@unique([masterId, masterTicketId, eventSeq])
   @@index([masterId, receivedAt])
+  @@index([strategyId])
 }
 
 model SignalOutbox {
@@ -332,4 +333,32 @@ model MarginReservation {
   expiresAt       DateTime?
   releasedAt      DateTime?
   createdAt       DateTime      @default(now())
+}
+
+model Account {
+  id             String   @id @default(uuid())
+  broker         String
+  active         Boolean  @default(true)
+  freeMargin     Decimal  @default(0)
+  reservedMargin Decimal  @default(0)
+  createdAt      DateTime @default(now())
+}
+
+enum StrategyMode {
+  DRY_RUN
+  LIVE
+}
+
+model Strategy {
+  id            String         @id @default(cuid())
+  name          String
+  description   String?
+  mode          StrategyMode   @default(DRY_RUN)
+  isActive      Boolean        @default(false)
+  symbols       String[]
+  riskPercent   Decimal        @default(1)
+  maxPositions  Int            @default(1)
+  config        Json           @default("{}")
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 }

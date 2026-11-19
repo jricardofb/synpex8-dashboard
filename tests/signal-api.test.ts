@@ -64,7 +64,7 @@ function signedHeaders(body: string, nonce = 'nonce-0123456789abcdef') {
 describe('Master signal HTTP API', () => {
   it('accepts a valid raw-body signature and returns 202', async () => {
     const dependencies = createTestDependencies();
-    const app = createSignalApi({
+    const app = await createSignalApi({
       ...dependencies,
       encryptionKey,
       signatureMaxAgeMs: 60_000,
@@ -90,7 +90,7 @@ describe('Master signal HTTP API', () => {
 
   it('rejects invalid JSON without looking up a Master', async () => {
     const dependencies = createTestDependencies();
-    const app = createSignalApi({
+    const app = await createSignalApi({
       ...dependencies,
       encryptionKey,
       signatureMaxAgeMs: 60_000,
@@ -116,7 +116,7 @@ describe('Master signal HTTP API', () => {
 
   it('returns 503 when Redis is unavailable instead of accepting without replay protection', async () => {
     const dependencies = createTestDependencies();
-    const app = createSignalApi({
+    const app = await createSignalApi({
       ...dependencies,
       redis: {
         ...dependencies.redis,

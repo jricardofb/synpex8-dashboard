@@ -279,7 +279,7 @@ button:disabled {
   font-size: 12px;
 }
 
-.breadcrumb > span:first-child {
+.breadcrumb>span:first-child {
   color: var(--muted);
 }
 
@@ -332,7 +332,7 @@ button:disabled {
   border-color: var(--border);
 }
 
-.notification-button > span {
+.notification-button>span {
   position: absolute;
   top: 7px;
   right: 7px;
@@ -411,7 +411,7 @@ button:disabled {
   letter-spacing: -1px;
 }
 
-.page-heading > div:first-child > p {
+.page-heading>div:first-child>p {
   margin: 9px 0 0;
   color: var(--muted);
   font-size: 12px;
@@ -722,7 +722,7 @@ tbody tr:hover {
   background: #26213a;
 }
 
-.robot-cell > div:last-child {
+.robot-cell>div:last-child {
   display: flex;
   flex-direction: column;
   gap: 5px;
@@ -764,7 +764,7 @@ tbody tr:hover {
   font-weight: 600;
 }
 
-.status-badge > span {
+.status-badge>span {
   width: 5px;
   height: 5px;
   border-radius: 50%;
@@ -776,7 +776,7 @@ tbody tr:hover {
   background: #29213e;
 }
 
-.status-simulation > span {
+.status-simulation>span {
   background: #a697ff;
 }
 
@@ -786,7 +786,7 @@ tbody tr:hover {
   background: #20252f;
 }
 
-.status-off > span {
+.status-off>span {
   background: #747e90;
 }
 
@@ -838,7 +838,7 @@ tbody tr:hover {
   font-weight: 700;
 }
 
-.live-indicator > span {
+.live-indicator>span {
   width: 6px;
   height: 6px;
   border-radius: 50%;
@@ -947,13 +947,13 @@ tbody tr:hover {
   font-size: 10px;
 }
 
-.page-footer > span:last-child {
+.page-footer>span:last-child {
   display: flex;
   align-items: center;
   gap: 6px;
 }
 
-.page-footer > span:last-child svg {
+.page-footer>span:last-child svg {
   color: #a99cff;
 }
 
@@ -1049,7 +1049,7 @@ tbody tr:hover {
   }
 
   .user-details,
-  .user-profile > .muted-icon {
+  .user-profile>.muted-icon {
     display: none;
   }
 
@@ -1147,4 +1147,161 @@ tbody tr:hover {
   .metric-card {
     padding: 17px;
   }
+
+  .filter-tabs {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .filter-tab {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    font-size: 13px;
+    opacity: 0.7;
+  }
+
+  .filter-tab.active {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.1);
+    opacity: 1;
+  }
+
+  .filter-tab .count-number {
+    font-size: 12px;
+  }
+
+  .side-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 6px;
+  }
+
+  .side-buy {
+    color: #22c55e;
+    background: rgba(34, 197, 94, 0.12);
+  }
+
+  .side-sell {
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.12);
+  }
+
+  .strategy-grid {
+    display: grid;
+    gap: 16px;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  }
+
+  .strategy-card {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    transition: border-color 0.2s;
+  }
+
+  .strategy-card:hover {
+    border-color: rgba(139, 92, 246, 0.5);
+  }
+
+  .strategy-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    color: #fff;
+  }
+
+  .strategy-badge {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 6px;
+  }
+
+  .strategy-badge.on {
+    background: rgba(16, 185, 129, 0.12);
+    color: #34d399;
+  }
+
+  .strategy-badge.off {
+    background: rgba(113, 113, 122, 0.25);
+    color: #a1a1aa;
+  }
+
+  .strategy-desc {
+    flex: 1;
+    font-size: 13px;
+    color: #a1a1aa;
+    margin: 0;
+  }
+
+  .strategy-date {
+    font-size: 11px;
+    color: #71717a;
+  }
+
+  .strategy-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 4px;
+  }
+
+  .strategy-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    flex: 1;
+    padding: 7px 12px;
+    font-size: 12px;
+    color: #fff;
+    background: transparent;
+    border: 1px solid #3f3f46;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+
+  .strategy-btn:hover {
+    background: #27272a;
+  }
+
+  .strategy-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .strategy-btn.danger {
+    flex: 0;
+    color: #f87171;
+    border-color: rgba(239, 68, 68, 0.3);
+  }
+
+  .strategy-btn.danger:hover {
+    background: rgba(239, 68, 68, 0.1);
+  }
+
+  .text-danger {
+    color: #f87171;
+  }
+
+  .spin {
+    animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
 }

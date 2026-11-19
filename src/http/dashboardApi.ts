@@ -13,7 +13,7 @@ export async function registerDashboardRoutes(
   // ------------------------------------------------------------------
   // 1. Resumo do Dashboard
   // ------------------------------------------------------------------
-  app.get('/api/v1/dashboard', async (request: FastifyRequest, reply: FastifyReply) => {
+  app.get('/api/v1/dashboard/summary', async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       // Uso de groupBy para consolidar duas queries de robôs em apenas uma viagem ao banco
       const [robotGroups, signalsTotal, signalsPending, openPositions] = await Promise.all([
@@ -102,6 +102,33 @@ export async function registerDashboardRoutes(
       return reply.code(500).send({
         error: 'ROBOTS_QUERY_FAILED',
         message: 'Internal server error while fetching robots list',
+      });
+    }
+  });
+    // ------------------------------------------------------------------
+  // 3. Lista de Sinais
+  // ------------------------------------------------------------------
+  app.get('/api/v1/signals', async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const signals = await prisma.masterSignal.findMany({
+        orderBy: {
+          createdAt: 'desc',
+        },
+        take: 100,
+      });
+
+      return reply.code(200).send({
+        data: signals,
+      });
+    } catch (error) {
+      request.log.error(
+        { err: error },
+        'Failed to list signals',
+      );
+
+      return reply.code(500).send({
+        error: 'SIGNALS_QUERY_FAILED',
+        message: 'Internal server error while fetching signals list',
       });
     }
   });

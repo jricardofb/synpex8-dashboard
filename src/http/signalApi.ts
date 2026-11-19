@@ -3,10 +3,8 @@ import Fastify, { type FastifyInstance } from 'fastify';
 import type { SignalRedis } from '../signals/receiveMasterSignal.js';
 import { receiveMasterSignal } from '../signals/receiveMasterSignal.js';
 import type { MasterSignalStore } from '../signals/masterSignalStore.js';
-const app = Fastify({ logger: true, bodyLimit: 16 * 1024 });
-await app.register(cors, {
-  origin: 'http://localhost:5173',
-});
+
+const SIGNAL_BODY_LIMIT = 16 * 1024;
 
 function singleHeader(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? undefined : value;
@@ -18,39 +16,57 @@ export interface SignalApiDependencies {
   encryptionKey: string;
   signatureMaxAgeMs: number;
   rateLimitPerMinute: number;
+  corsOrigins?: string[];
 }
 
-export function createSignalApi(dependencies: SignalApiDependencies): FastifyInstance {
-  const app = Fastify({ logger: true, bodyLimit: 16 * 1024 });
+export async function createSignalApi(dependencies: SignalApiDependencies): Promise<FastifyInstance> {
+  const { corsOrigins = ['http://localhost:5173'], ...signalDeps } = dependencies;
 
-  app.removeContentTypeParser('application/json');
-  app.addContentTypeParser('application/json', { parseAs: 'buffer' }, (_request, body, done) => {
-    done(null, body);
+  const app = Fastify({ logger: true });
+
+  console.log('CORS_ORIGINS =>', JSON.stringify(corsOrigins)); // 👈 única linha nova
+
+  // CORS no app raiz: vale também para as rotas registradas depois no api.ts
+  await app.register(cors, {
+    origin: corsOrigins,
+    methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
   });
 
-  //app.get('/health', async () => ({ status: 'ok' }));
+  // Plugin encapsulado: o parser "buffer" só afeta /api/v1/signals
+  await app.register(async (scope) => {
+    scope.removeContentTypeParser('application/json');
+    scope.addContentTypeParser(
+      'application/json',
+      { parseAs: 'buffer', bodyLimit: SIGNAL_BODY_LIMIT },
+      (_request, body, done) => done(null, body),
+    );
 
-  app.post('/api/v1/signals', async (request, reply) => {
-    try {
-      const rawBody = Buffer.isBuffer(request.body) ? request.body : Buffer.alloc(0);
-      const result = await receiveMasterSignal({
-        rawBody,
-        headers: {
-          masterId: singleHeader(request.headers['x-master-id']),
-          timestamp: singleHeader(request.headers['x-signal-timestamp']),
-          nonce: singleHeader(request.headers['x-signal-nonce']),
-          signature: singleHeader(request.headers['x-signal-signature']),
-        },
-        clientAddress: request.ip,
-        ...dependencies,
-      });
+    scope.post('/api/v1/signals', { bodyLimit: SIGNAL_BODY_LIMIT }, async (request, reply) => {
+      try {
+        const rawBody = Buffer.isBuffer(request.body) ? request.body : Buffer.alloc(0);
+        const result = await receiveMasterSignal({
+          rawBody,
+          headers: {
+            masterId: singleHeader(request.headers['x-master-id']),
+            timestamp: singleHeader(request.headers['x-signal-timestamp']),
+            nonce: singleHeader(request.headers['x-signal-nonce']),
+            signature: singleHeader(request.headers['x-signal-signature']),
+          },
+          clientAddress: request.ip,
+          ...signalDeps,
+        });
 
-      return reply.code(result.statusCode).send(result.body);
-    } catch (error) {
-      request.log.error({ errorName: error instanceof Error ? error.name : 'UnknownError' }, 'Signal intake unavailable');
-      return reply.code(503).send({ error: 'SERVICE_UNAVAILABLE' });
-    }
+        return reply.code(result.statusCode).send(result.body);
+      } catch (error) {
+        request.log.error(
+          { errorName: error instanceof Error ? error.name : 'UnknownError' },
+          'Signal intake unavailable',
+        );
+        return reply.code(503).send({ error: 'SERVICE_UNAVAILABLE' });
+      }
+    });
   });
 
   return app;
 }
+
